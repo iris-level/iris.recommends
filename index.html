@@ -695,7 +695,7 @@
         <div class="phrase-en" id="phraseEn">To be thrilled</div>
         <div class="phrase-transcription" id="phraseTranscription">/tuː biː θrɪld/</div>
         <div class="phrase-ru" id="phraseRu">быть в полном восторге, искренне радоваться чему-то</div>
-        <div class="phrase-example" id="phraseExample" style="display:none"></div>
+        <div class="phrase-example" id="phraseExample"></div>
         <div class="intonation-wrap" id="intonationWrap"></div>
       </div>
     </div>
@@ -1569,26 +1569,32 @@ function renderIntonation(tokens, container) {
   container.innerHTML = '';
   if (!tokens || !tokens.length) return;
 
+  // Use rAF so the container has been laid out and has a real width
+  requestAnimationFrame(() => _doRenderIntonation(tokens, container));
+}
+
+function _doRenderIntonation(tokens, container) {
+  container.innerHTML = '';
+
   const PAD_LEFT = 8, PAD_RIGHT = 8;
-  const ROW_H = 72;       // height per row
-  const ARC_ZONE = 34;    // top zone for arcs
-  const WORD_Y = 58;      // baseline for word text
-  const WORD_GAP = 10;    // gap between words
-  const PAUSE_W = 14;     // extra width for pause marker
+  const ROW_H = 72;
+  const ARC_ZONE = 34;
+  const WORD_Y = 58;
+  const WORD_GAP = 10;
+  const PAUSE_W = 14;
 
   // Measure word widths using a temp canvas
   const mc = document.createElement('canvas');
   const mctx = mc.getContext('2d');
-  mctx.font = '600 13px DM Sans, sans-serif';
 
   const measured = tokens.map(t => {
-    const stressed = t.s;
-    mctx.font = stressed ? '600 13px DM Sans, sans-serif' : '400 13px DM Sans, sans-serif';
+    mctx.font = t.s ? '600 13px DM Sans, sans-serif' : '400 13px DM Sans, sans-serif';
     return { ...t, width: mctx.measureText(t.w).width };
   });
 
-  // Layout: split into rows if total width > 580
-  const MAX_ROW_W = 580;
+  // Available width — use container width or fallback to 560
+  const availW = (container.clientWidth || container.offsetWidth || 560) - PAD_LEFT - PAD_RIGHT;
+  const MAX_ROW_W = Math.max(availW, 300);
   const rows = [];
   let row = [];
   let rowW = PAD_LEFT;
