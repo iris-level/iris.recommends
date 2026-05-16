@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Emotional Vocabulary · Speech Trainer</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --border: rgba(255,255,255,0.07);
+    --accent: #c8a96e;
+    --accent2: #7eb8d4;
+    --accent3: #9b8fd4;
+    --text: #e8e4dc;
+    --muted: #7a7870;
+    --success: #6dbf8a;
+    --danger: #e07070;
+    --wave-h: 72px;
+    /* Telegram safe areas for notch/home bar */
+    --tg-safe-top: env(safe-area-inset-top, 0px);
+    --tg-safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding-top: var(--tg-safe-top);
+    padding-bottom: var(--tg-safe-bottom);
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    background-size: 180px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  .container {
+    position: relative; z-index: 1;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(200,169,110,0.3);
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 400;
+    line-height: 1.15;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 32px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .card-header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .phrase-number {
+    font-family: 'DM Serif Display', serif;
+    font-size: 13px;
+    color: var(--accent);
+    opacity: 0.6;
+    min-width: 28px;
+    padding-top: 4px;
+  }
+
+  .phrase-content { flex: 1; }
+
+  .phrase-en {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+
+  .phrase-transcription {
+    font-size: 12px;
+    color: var(--accent2);
+    font-weight: 300;
+    letter-spacing: 0.03em;
+    margin-bottom: 6px;
+    font-style: italic;
+  }
+
+  .phrase-ru {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 300;
+    line-height: 1.5;
+  }
+
+  .phrase-example {
+    margin-top: 8px;
+    font-size: 13px;
+    color: rgba(232,228,220,0.55);
+    font-style: italic;
+    line-height: 1.6;
+  }
+
+  /* Intonation diagram */
+  .intonation-wrap {
+    margin-top: 14px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .intonation-svg {
+    display: block;
+    overflow: visible;
+  }
+
+  .inton-word {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    fill: rgba(232,228,220,0.7);
+    font-style: italic;
+  }
+  .inton-word.stressed {
+    fill: var(--text);
+    font-weight: 600;
+    font-style: normal;
+  }
+
+  .inton-arc {
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+  .arc-rise   { stroke: #7eb8d4; }
+  .arc-fall   { stroke: #c8a96e; }
+  .arc-level  { stroke: rgba(155,143,212,0.6); }
+  .arc-rise-fall { stroke: #9b8fd4; }
+
+  .inton-arrow {
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .inton-pause {
+    stroke: rgba(255,255,255,0.12);
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+  }
+
+  .inton-legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+  }
+  .legend-line {
+    width: 20px;
+    height: 2px;
+    border-radius: 2px;
+  }
+
+  /* Wave visualizer */
+  .wave-section {
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.2);
+  }
+
+  .wave-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  canvas {
+    width: 100%;
+    height: var(--wave-h);
+    display: block;
+    border-radius: 6px;
+  }
+
+  .wave-native { background: rgba(200,169,110,0.05); }
+  .wave-user   { background: rgba(126,184,212,0.05); }
+
+  /* Controls */
+  .controls {
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-play {
+    background: var(--accent);
+    color: #0d0f14;
+  }
+  .btn-play:hover { background: #d4b87a; transform: translateY(-1px); }
+  .btn-play:active { transform: translateY(0); }
+
+  .btn-record {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-record:hover { border-color: var(--accent2); color: var(--accent2); }
+  .btn-record.recording {
+    background: rgba(224,112,112,0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+    animation: pulse-border 1.2s ease infinite;
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(224,112,112,0.3); }
+    50%       { box-shadow: 0 0 0 5px rgba(224,112,112,0); }
+  }
+
+  .btn-playback {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-playback:hover { border-color: var(--accent2); }
+  .btn-playback:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .btn-icon { width: 16px; height: 16px; }
+
+  .score-badge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .score-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.3s;
+  }
+  .score-dot.done { background: var(--success); }
+
+  /* Navigation */
+  .nav {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 24px;
+  }
+
+  .btn-nav {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 10px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-nav:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Hint */
+  .hint {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: rgba(155,143,212,0.07);
+    border: 1px solid rgba(155,143,212,0.15);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--accent3);
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  /* Feedback */
+  .feedback {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    transition: all 0.3s;
+    width: 100%;
+  }
+  .feedback.good {
+    background: rgba(109,191,138,0.1);
+    border: 1px solid rgba(109,191,138,0.2);
+    color: var(--success);
+  }
+  .feedback.try {
+    background: rgba(200,169,110,0.08);
+    border: 1px solid rgba(200,169,110,0.2);
+    color: var(--accent);
+  }
+  .feedback.hidden { display: none; }
+
+  /* Feedback block */
+  .feedback-block {
+    padding: 16px 32px 20px;
+    border-top: 1px solid var(--border);
+    display: none;
+  }
+  .feedback-block.visible { display: block; }
+
+  .feedback-title {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .feedback-summary {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .feedback-summary.good { color: var(--success); }
+  .feedback-summary.bad  { color: var(--danger); }
+  .feedback-summary.warn { color: var(--accent); }
+
+  .error-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .error-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .error-item.err {
+    background: rgba(224,112,112,0.08);
+    border: 1px solid rgba(224,112,112,0.18);
+    color: #e8a0a0;
+  }
+  .error-item.warn {
+    background: rgba(200,169,110,0.07);
+    border: 1px solid rgba(200,169,110,0.18);
+    color: #d4b87a;
+  }
+  .error-item.ok {
+    background: rgba(109,191,138,0.07);
+    border: 1px solid rgba(109,191,138,0.18);
+    color: #8dd4a8;
+  }
+
+  .error-icon { font-size: 15px; line-height: 1.4; flex-shrink: 0; }
+  .error-text strong { display: block; font-weight: 600; margin-bottom: 2px; }
+
+  .transcript-line {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .transcript-line span.match { color: var(--success); }
+  .transcript-line span.miss  { color: var(--danger); text-decoration: underline dotted; }
+
+  .btn-retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border-radius: 8px;
+    border: 1px solid rgba(200,169,110,0.35);
+    background: rgba(200,169,110,0.08);
+    color: var(--accent);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .btn-retry:hover {
+    background: rgba(200,169,110,0.15);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  /* Pronunciation tips */
+  .pron-tips {
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(155,143,212,0.04);
+  }
+
+  .pron-tips-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent3);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .pron-tips-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .pron-tip-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: rgba(232,228,220,0.75);
+  }
+
+  .pron-tip-icon {
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .pron-tip-item em {
+    font-style: normal;
+    color: var(--accent2);
+    font-weight: 500;
+    background: rgba(126,184,212,0.1);
+    padding: 0 4px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+
+  .pron-tip-item strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* Waveform dots animation during TTS */
+  .speaking-indicator {
+    display: none;
+    align-items: center;
+    gap: 3px;
+    margin-left: 8px;
+  }
+  .speaking-indicator.active { display: flex; }
+  .speaking-indicator span {
+    width: 3px; height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+    animation: speakBar 0.7s ease infinite;
+  }
+  .speaking-indicator span:nth-child(2) { animation-delay: 0.1s; height: 20px; }
+  .speaking-indicator span:nth-child(3) { animation-delay: 0.2s; height: 10px; }
+  .speaking-indicator span:nth-child(4) { animation-delay: 0.15s; height: 18px; }
+  .speaking-indicator span:nth-child(5) { animation-delay: 0.05s; height: 12px; }
+
+  @keyframes speakBar {
+    0%, 100% { transform: scaleY(0.4); opacity: 0.5; }
+    50%       { transform: scaleY(1); opacity: 1; }
+  }
+
+  /* Category chips */
+  .categories {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    justify-content: center;
+  }
+
+  .chip {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .chip:hover, .chip.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(200,169,110,0.08);
+  }
+
+  /* Speed control */
+  .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 8px;
+  }
+  .speed-btn {
+    padding: 4px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    transition: all 0.2s;
+  }
+  .speed-btn.active { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Intro tips */
+  .tips {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  @media(max-width: 500px) { .tips { grid-template-columns: 1fr; } }
+
+  .tip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .tip-icon { font-size: 20px; margin-bottom: 6px; }
+  .tip-text { font-size: 11px; color: var(--muted); line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="tag">Speech Trainer</div>
+    <h1>Emotional <em>Vocabulary</em></h1>
+    <p class="subtitle">Повторяйте за диктором — тренируйте интонации живой речи</p>
+  </header>
+
+  <div class="tips">
+    <div class="tip">
+      <div class="tip-icon">🔊</div>
+      <div class="tip-text">Слушайте диктора — запоминайте ритм и интонацию</div>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">🎙️</div>
+      <div class="tip-text">Повторяйте вслух — сразу после или одновременно</div>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">📊</div>
+      <div class="tip-text">Сравните волны — чем похожее, тем лучше shadowing</div>
+    </div>
+  </div>
+
+  <div class="categories">
+    <button class="chip active" data-cat="all" onclick="filterCategory('all', this)">Все фразы</button>
+    <button class="chip" data-cat="formal" onclick="filterCategory('formal', this)">Формальные</button>
+    <button class="chip" data-cat="casual" onclick="filterCategory('casual', this)">Разговорные</button>
+  </div>
+
+  <div class="progress-label">
+    <span id="progressLabel">Фраза 1 из 13</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+  <!-- Main card -->
+  <div class="card" id="mainCard">
+    <div class="card-header">
+      <div class="phrase-number" id="phraseNum">01</div>
+      <div class="phrase-content">
+        <div class="phrase-en" id="phraseEn">To be thrilled</div>
+        <div class="phrase-transcription" id="phraseTranscription">/tuː biː θrɪld/</div>
+        <div class="phrase-ru" id="phraseRu">быть в полном восторге, искренне радоваться чему-то</div>
+        <div class="phrase-example" id="phraseExample"></div>
+        <div class="intonation-wrap" id="intonationWrap"></div>
+      </div>
+    </div>
+
+    <!-- Pronunciation tips -->
+    <div class="pron-tips" id="pronTips">
+      <div class="pron-tips-label">💬 На что обратить внимание</div>
+      <div class="pron-tips-list" id="pronTipsList"></div>
+    </div>
+
+    <!-- Native wave -->
+    <div class="wave-section">
+      <div class="wave-label">Диктор
+        <span class="speaking-indicator" id="speakingIndicator">
+          <span></span><span></span><span></span><span></span><span></span>
+        </span>
+      </div>
+      <canvas id="nativeWave" class="wave-native" height="72"></canvas>
+    </div>
+
+    <!-- User wave -->
+    <div class="wave-section">
+      <div class="wave-label">Ваша запись</div>
+      <canvas id="userWave" class="wave-user" height="72"></canvas>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="btn btn-play" id="btnPlay" onclick="playNative()">
+        <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.5l10 5.5-10 5.5V2.5z"/></svg>
+        Слушать
+      </button>
+
+      <div class="speed-control">
+        <button class="speed-btn active" id="speed1" onclick="setSpeed(1, this)">1×</button>
+        <button class="speed-btn" id="speed07" onclick="setSpeed(0.7, this)">0.7×</button>
+      </div>
+
+      <button class="btn btn-record" id="btnRecord" onclick="toggleRecord()">
+        <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor">
+          <circle cx="8" cy="6" r="3"/>
+          <path d="M4 6a4 4 0 008 0M8 11v3M6 14h4" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        </svg>
+        <span id="recordLabel">Записать</span>
+      </button>
+
+      <button class="btn btn-playback" id="btnPlayback" onclick="playUserAudio()" disabled>
+        <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.5l10 5.5-10 5.5V2.5z"/></svg>
+        Прослушать себя
+      </button>
+
+      <button class="btn-retry" id="btnRetry" onclick="retryPhrase()" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M2 8a6 6 0 1 1 1.5 4M2 8V4M2 8H6"/>
+        </svg>
+        Заново
+      </button>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">
+    🎯 Shadowing: слушайте → повторяйте одновременно или сразу после → сравнивайте волны
+  </div>
+
+  <div class="nav">
+    <button class="btn-nav" id="btnPrev" onclick="navigate(-1)" disabled>← Назад</button>
+    <button class="btn-nav" id="btnNext" onclick="navigate(1)">Вперёд →</button>
+  </div>
+
+</div>
+
+<script>
+const phrases = [
+  {
+    en: "To be thrilled",
+    transcription: "/tuː biː θrɪld/",
+    ru: "быть в полном восторге, искренне радоваться чему-то",
+    example: "We were thrilled to hear that our research proposal was finally approved.",
+    tts: "We were thrilled to hear that our research proposal was finally approved.",
+    cat: "formal",
+    intonation: [
+      { w: "We",        s: false, arc: "level" },
+      { w: "were",      s: false, arc: "level" },
+      { w: "thrilled",  s: true,  arc: "rise-fall", p: true },
+      { w: "to",        s: false, arc: "level" },
+      { w: "hear",      s: true,  arc: "rise" },
+      { w: "that",      s: false, arc: "level" },
+      { w: "our",       s: false, arc: "level" },
+      { w: "research",  s: true,  arc: "rise" },
+      { w: "proposal",  s: true,  arc: "level-high", p: true },
+      { w: "was",       s: false, arc: "level" },
+      { w: "finally",   s: true,  arc: "rise" },
+      { w: "approved.", s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🔤", text: "Звук <em>θ</em> в слове <strong>thrilled</strong> — межзубный: кончик языка между зубами, воздух проходит плавно. Не заменяйте на «т» или «ф»." },
+      { icon: "🎵", text: "Ударение на <strong>THRIL-led</strong>: гласная тянется чуть вверх, «-led» — резко вниз. Фраза звучит с нотой радостного удивления." },
+      { icon: "⏸️", text: "В примере сделайте лёгкую паузу после <strong>thrilled</strong>, перед «to hear» — это подчёркивает эмоцию." }
+    ]
+  },
+  {
+    en: "To be content",
+    transcription: "/tuː biː kənˈtent/",
+    ru: "испытывать спокойное, глубокое удовлетворение",
+    example: "He is perfectly content with his quiet life.",
+    tts: "He is perfectly content with his quiet life.",
+    cat: "casual",
+    intonation: [
+      { w: "He",        s: false, arc: "level" },
+      { w: "is",        s: false, arc: "level" },
+      { w: "perfectly", s: true,  arc: "rise" },
+      { w: "content",   s: true,  arc: "rise-fall", p: true },
+      { w: "with",      s: false, arc: "level" },
+      { w: "his",       s: false, arc: "level" },
+      { w: "quiet",     s: true,  arc: "rise" },
+      { w: "life.",     s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🎵", text: "Ударение строго на втором слоге: <strong>con-TENT</strong>. Если сказать <em>CON-tent</em> — это уже существительное «содержание», не прилагательное." },
+      { icon: "🔤", text: "Первый слог — редуцированный: <em>kən</em>, почти «кн». Не тяните «кон»." },
+      { icon: "🎭", text: "Фраза передаёт <strong>тихое спокойствие</strong>: интонация ровная, без подъёмов. Голос немного снижается к концу." }
+    ]
+  },
+  {
+    en: "To keep one's composure",
+    transcription: "/tuː kiːp wʌnz kəmˈpoʊʒər/",
+    ru: "сохранять самообладание и внешнее спокойствие",
+    example: "She managed to keep her composure during the presentation.",
+    tts: "She managed to keep her composure during the presentation.",
+    cat: "formal",
+    intonation: [
+      { w: "She",          s: false, arc: "level" },
+      { w: "managed",      s: true,  arc: "rise-fall", p: true },
+      { w: "to",           s: false, arc: "level" },
+      { w: "keep",         s: true,  arc: "rise" },
+      { w: "her",          s: false, arc: "level" },
+      { w: "composure",    s: true,  arc: "rise-fall", p: true },
+      { w: "during",       s: false, arc: "level" },
+      { w: "the",          s: false, arc: "level" },
+      { w: "presentation.",s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🔤", text: "Звук <em>ʒ</em> в <strong>composure</strong> — как «ж» в слове «жест». Слог <em>-ʒər</em> произносится мягко, не «зур»." },
+      { icon: "🎵", text: "Ударение: <strong>com-PO-sure</strong>. Гласная <em>oʊ</em> — двойная: начинается как «о», плавно переходит в «у»." },
+      { icon: "⏸️", text: "В примере интонация спокойная и чуть восхищённая: <strong>managed</strong> немного выделяется — это ключевое слово фразы." }
+    ]
+  },
+  {
+    en: "To be on cloud nine",
+    transcription: "/tuː biː ɑːn klaʊd naɪn/",
+    ru: "быть на седьмом небе от счастья",
+    example: "She's been on cloud nine ever since she got her dream job.",
+    tts: "She's been on cloud nine ever since she got her dream job.",
+    cat: "casual",
+    intonation: [
+      { w: "She's",   s: false, arc: "level" },
+      { w: "been",    s: false, arc: "level" },
+      { w: "on",      s: false, arc: "rise" },
+      { w: "cloud",   s: true,  arc: "rise" },
+      { w: "nine",    s: true,  arc: "rise-fall", p: true },
+      { w: "ever",    s: false, arc: "level" },
+      { w: "since",   s: false, arc: "level" },
+      { w: "she",     s: false, arc: "level" },
+      { w: "got",     s: false, arc: "level" },
+      { w: "her",     s: false, arc: "level" },
+      { w: "dream",   s: true,  arc: "rise" },
+      { w: "job.",    s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🔤", text: "Дифтонг <em>aʊ</em> в <strong>cloud</strong>: начинается как «а», быстро переходит в «у». Не произносите просто «клод»." },
+      { icon: "🎵", text: "Идиома звучит как одно целое: <em>on cloud NINE</em> — ударение на «nine», голос взлетает вверх, передавая восторг." },
+      { icon: "🔗", text: "Слова <strong>on cloud nine</strong> произносятся слитно, без пауз между ними — как одно длинное слово." }
+    ]
+  },
+  {
+    en: "To feel reassured",
+    transcription: "/tuː fiːl ˌriːəˈʃʊrd/",
+    ru: "почувствовать облегчение и уверенность после того, как сомнения развеялись",
+    example: "I felt reassured after talking to the doctor.",
+    tts: "I felt reassured after talking to the doctor.",
+    cat: "formal",
+    intonation: [
+      { w: "I",          s: false, arc: "level" },
+      { w: "felt",       s: true,  arc: "rise" },
+      { w: "reassured",  s: true,  arc: "rise-fall", p: true },
+      { w: "after",      s: false, arc: "level" },
+      { w: "talking",    s: true,  arc: "rise" },
+      { w: "to",         s: false, arc: "level" },
+      { w: "the",        s: false, arc: "level" },
+      { w: "doctor.",    s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🔤", text: "В <strong>reassured</strong> три слога: <em>re-a-SHURED</em>. Звук <em>ʃ</em> — мягкое «ш». Финальный <em>-urd</em> произносится как «ёрд», не «urd»." },
+      { icon: "🎵", text: "Ударение на последнем слоге: <strong>re-a-SHURED</strong>. Именно он несёт эмоцию облегчения — произносите с лёгким выдохом." },
+      { icon: "🎭", text: "Интонация фразы: после <strong>reassured</strong> — небольшой спад, пауза, затем <em>after talking to the doctor</em> — ровно и спокойно." }
+    ]
+  },
+  {
+    en: "To look forward to something",
+    transcription: "/tuː lʊk ˈfɔːrwərd tuː ˈsʌmθɪŋ/",
+    ru: "с приятным ожиданием предвкушать что-то хорошее",
+    example: "I'm really looking forward to a quiet weekend with my family.",
+    tts: "I'm really looking forward to a quiet weekend with my family.",
+    cat: "casual",
+    intonation: [
+      { w: "I'm",      s: false, arc: "level" },
+      { w: "really",   s: true,  arc: "rise" },
+      { w: "looking",  s: true,  arc: "level-high" },
+      { w: "forward",  s: true,  arc: "level-high" },
+      { w: "to",       s: false, arc: "level", p: true },
+      { w: "a",        s: false, arc: "level" },
+      { w: "quiet",    s: true,  arc: "rise" },
+      { w: "weekend",  s: true,  arc: "rise-fall", p: true },
+      { w: "with",     s: false, arc: "level" },
+      { w: "my",       s: false, arc: "level" },
+      { w: "family.",  s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🔗", text: "Устойчивое выражение: <strong>looking forward to</strong> произносится почти слитно. «To» здесь безударное — <em>tə</em>, почти не слышно." },
+      { icon: "🎵", text: "Ударение и подъём интонации на <strong>REAL-ly</strong> и на ключевом существительном: <em>quiet WEEKend</em> — это то, чего ждут." },
+      { icon: "🔤", text: "Звук <em>θ</em> в <strong>something</strong> — межзубный «т». Финальный <em>-ɪŋ</em> произносится как «инг», без твёрдого «г» на конце." }
+    ]
+  },
+  {
+    en: "To be at peace",
+    transcription: "/tuː biː æt piːs/",
+    ru: "ощущать внутреннюю гармонию и покой",
+    example: "I feel completely at peace in the early morning.",
+    tts: "I feel completely at peace in the early morning.",
+    cat: "casual",
+    intonation: [
+      { w: "I",          s: false, arc: "level" },
+      { w: "feel",       s: true,  arc: "rise" },
+      { w: "completely", s: true,  arc: "rise" },
+      { w: "at",         s: false, arc: "level" },
+      { w: "peace",      s: true,  arc: "rise-fall", p: true },
+      { w: "in",         s: false, arc: "level" },
+      { w: "the",        s: false, arc: "level" },
+      { w: "early",      s: true,  arc: "rise" },
+      { w: "morning.",   s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🎵", text: "Ударение на <strong>PEACE</strong> — долгий <em>iː</em>: тяните гласную спокойно и уверенно. Это ключевое слово фразы." },
+      { icon: "🎭", text: "Вся фраза звучит плавно и медленно — никаких резких подъёмов. Голос снижается к концу, передавая ощущение покоя." },
+      { icon: "🔗", text: "<strong>at peace</strong> читается слитно: <em>ət-PIːS</em>. «At» редуцируется до <em>ət</em> в беглой речи." }
+    ]
+  },
+  {
+    en: "To feel uplifted",
+    transcription: "/tuː fiːl ˌʌpˈlɪftɪd/",
+    ru: "испытывать душевный подъём и прилив оптимизма",
+    example: "The warm feedback from my readers always makes me feel uplifted.",
+    tts: "The warm feedback from my readers always makes me feel uplifted.",
+    cat: "formal",
+    intonation: [
+      { w: "The",       s: false, arc: "level" },
+      { w: "warm",      s: true,  arc: "rise" },
+      { w: "feedback",  s: true,  arc: "rise", p: true },
+      { w: "from",      s: false, arc: "level" },
+      { w: "my",        s: false, arc: "level" },
+      { w: "readers",   s: true,  arc: "rise-fall", p: true },
+      { w: "always",    s: true,  arc: "rise" },
+      { w: "makes",     s: false, arc: "level" },
+      { w: "me",        s: false, arc: "level" },
+      { w: "feel",      s: true,  arc: "rise" },
+      { w: "uplifted.", s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🎵", text: "Ударение: <em>up-LIF-ted</em>. Второй слог — самый сильный. Финальный <em>-ɪd</em> — лёгкий, почти не слышный." },
+      { icon: "🎭", text: "Слово <strong>uplifted</strong> само по себе звучит «поднимающимся»: интонация идёт вверх на <em>up</em> и пиковая на <em>lift</em>." },
+      { icon: "⏸️", text: "В примере выделите <strong>always</strong> — оно добавляет регулярность и теплоту. После него лёгкое ускорение к концу фразы." }
+    ]
+  },
+  {
+    en: "To walk on air",
+    transcription: "/tuː wɔːk ɑːn er/",
+    ru: "буквально «летать от счастья»",
+    example: "He was walking on air for days after the good news.",
+    tts: "He was walking on air for days after the good news.",
+    cat: "casual",
+    intonation: [
+      { w: "He",      s: false, arc: "level" },
+      { w: "was",     s: false, arc: "level" },
+      { w: "walking", s: true,  arc: "rise" },
+      { w: "on",      s: false, arc: "rise" },
+      { w: "air",     s: true,  arc: "rise-fall", p: true },
+      { w: "for",     s: false, arc: "level" },
+      { w: "days",    s: true,  arc: "rise", p: true },
+      { w: "after",   s: false, arc: "level" },
+      { w: "the",     s: false, arc: "level" },
+      { w: "good",    s: true,  arc: "rise" },
+      { w: "news.",   s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🔤", text: "Звук <em>ɔː</em> в <strong>walk</strong>: губы вытянуты трубочкой, долгое «о». Буква «l» не произносится — <em>wɔːk</em>, не «уолк»." },
+      { icon: "🎵", text: "Идиома <strong>on air</strong> произносится с лёгким восхождением интонации — как будто голос сам «взлетает». Ударение на <em>AIR</em>." },
+      { icon: "🔗", text: "<strong>walking on air</strong> — слова плавно соединяются: <em>wɔːkɪŋ-ɒn-er</em>. «On» в беглой речи звучит как <em>ɒn</em>, почти «ын»." }
+    ]
+  },
+  {
+    en: "To be in high spirits",
+    transcription: "/tuː biː ɪn haɪ ˈspɪrɪts/",
+    ru: "быть в прекрасном настроении",
+    example: "The whole family was in high spirits before the trip.",
+    tts: "The whole family was in high spirits before the trip.",
+    cat: "casual",
+    intonation: [
+      { w: "The",      s: false, arc: "level" },
+      { w: "whole",    s: true,  arc: "rise" },
+      { w: "family",   s: true,  arc: "rise", p: true },
+      { w: "was",      s: false, arc: "level" },
+      { w: "in",       s: false, arc: "level" },
+      { w: "high",     s: true,  arc: "rise" },
+      { w: "spirits",  s: true,  arc: "rise-fall", p: true },
+      { w: "before",   s: false, arc: "level" },
+      { w: "the",      s: false, arc: "level" },
+      { w: "trip.",    s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🎵", text: "Ударение на <strong>HIGH spirits</strong>: оба слова несут смысл, но <em>high</em> — главный. Произносится с энергичным подъёмом." },
+      { icon: "🔤", text: "Дифтонг <em>haɪ</em>: начинается как «х-а», скользит в «и». Не тяните монотонно — это живое, подвижное звучание." },
+      { icon: "🎭", text: "Вся фраза звучит с воодушевлением — интонация приподнята на протяжении всего предложения, и только на <em>trip</em> слегка снижается." }
+    ]
+  },
+  {
+    en: "To feel at ease",
+    transcription: "/tuː fiːl æt iːz/",
+    ru: "чувствовать себя спокойно и комфортно",
+    example: "I always feel at ease when I'm at home.",
+    tts: "I always feel at ease when I'm at home.",
+    cat: "casual",
+    intonation: [
+      { w: "I",      s: false, arc: "level" },
+      { w: "always", s: true,  arc: "rise" },
+      { w: "feel",   s: true,  arc: "rise" },
+      { w: "at",     s: false, arc: "level" },
+      { w: "ease",   s: true,  arc: "rise-fall", p: true },
+      { w: "when",   s: false, arc: "level" },
+      { w: "I'm",    s: false, arc: "level" },
+      { w: "at",     s: false, arc: "level" },
+      { w: "home.",  s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🔤", text: "Звук <em>æ</em> в <strong>at</strong>: рот широко открыт, язык внизу — как в «э», но ещё шире. Не путайте с <em>ə</em> — здесь гласная ударная." },
+      { icon: "🔗", text: "<strong>at ease</strong> соединяется в одно: <em>æ-TIːZ</em> — «t» переходит прямо в «ease» без паузы." },
+      { icon: "🎭", text: "Интонация ровная, без подъёмов — само звучание передаёт расслабленность. <strong>always</strong> произносится мягко, без лишнего ударения." }
+    ]
+  },
+  {
+    en: "To feel energized",
+    transcription: "/tuː fiːl ˈenərdʒaɪzd/",
+    ru: "чувствовать прилив энергии",
+    example: "I felt energized after a long walk.",
+    tts: "I felt energized after a long walk.",
+    cat: "casual",
+    intonation: [
+      { w: "I",          s: false, arc: "level" },
+      { w: "felt",       s: true,  arc: "rise" },
+      { w: "energized",  s: true,  arc: "rise-fall", p: true },
+      { w: "after",      s: false, arc: "level" },
+      { w: "a",          s: false, arc: "level" },
+      { w: "long",       s: true,  arc: "rise" },
+      { w: "walk.",      s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🎵", text: "Ударение: <strong>EN-er-gized</strong> — на первый слог. Три слога, не четыре: <em>EN-ər-dʒaɪzd</em>." },
+      { icon: "🔤", text: "Финальный дифтонг <em>aɪzd</em>: «а» скользит в «й», затем звонкое <em>z</em> и <em>d</em> — произносите чётко, не обрывайте." },
+      { icon: "🎭", text: "Само слово <strong>energized</strong> звучит «энергично»: произносите его немного быстрее и с подъёмом — это передаёт смысл." }
+    ]
+  },
+  {
+    en: "To feel inspired",
+    transcription: "/tuː fiːl ɪnˈspaɪərd/",
+    ru: "чувствовать вдохновение",
+    example: "I felt inspired to start a new project.",
+    tts: "I felt inspired to start a new project.",
+    cat: "casual",
+    intonation: [
+      { w: "I",        s: false, arc: "level" },
+      { w: "felt",     s: true,  arc: "rise" },
+      { w: "inspired", s: true,  arc: "rise-fall", p: true },
+      { w: "to",       s: false, arc: "level" },
+      { w: "start",    s: true,  arc: "rise" },
+      { w: "a",        s: false, arc: "level" },
+      { w: "new",      s: true,  arc: "rise" },
+      { w: "project.", s: true,  arc: "fall" }
+    ],
+    tips: [
+      { icon: "🎵", text: "Ударение: <em>in-SPIRED</em> — на втором слоге. Гласная <em>aɪ</em> тянется: «а» плавно в «й», потом <em>-ərd</em> на выдохе." },
+      { icon: "🔤", text: "Первый слог <em>ɪn-</em> — краткий и тихий. Не растягивайте «ин», иначе потеряется ударение на <strong>-spired</strong>." },
+      { icon: "🎭", text: "Фраза звучит с лёгким подъёмом на <strong>inspired</strong> и небольшим ускорением на <em>to start a new project</em> — ощущение порыва и намерения." }
+    ]
+  }
+];
+
+let currentIndex = 0;
+let currentFilter = 'all';
+let filteredPhrases = [...phrases];
+let done = new Set();
+
+// Audio / recording state
+let audioCtx = null;
+let mediaRecorder = null;
+let recordingChunks = [];
+let userAudioBlob = null;
+let userAudioUrl = null;
+let nativeAnalyser = null;
+let userAnalyser = null;
+let userAnimId = null;
+let isRecording = false;
+
+// MP3 + wave state
+let currentAudio = null;
+let isSpeaking = false;
+let playbackRate = 1;
+let nativeWaveData = [];
+let nativeWavePos = 0;
+let nativeAnimId = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+// ─── MP3 PLAYBACK ─────────────────────────────────────────────────────────────
+
+function getMP3Index(phraseIndex) {
+  // Map filtered phrase back to global phrase index for filename
+  const phrase = filteredPhrases[phraseIndex];
+  const globalIdx = phrases.indexOf(phrase);
+  return String(globalIdx + 1).padStart(2, '0');
+}
+
+function playNative() {
+  if (isSpeaking) {
+    stopAudio();
+    return;
+  }
+
+  const num = getMP3Index(currentIndex);
+  const src = `p${num}.mp3`;
+
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+
+  currentAudio = new Audio(src);
+  currentAudio.playbackRate = playbackRate;
+
+  currentAudio.onplay = () => {
+    isSpeaking = true;
+    document.getElementById('speakingIndicator').classList.add('active');
+    document.getElementById('btnPlay').innerHTML = `
+      <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="2" width="4" height="12"/><rect x="9" y="2" width="4" height="12"/></svg>
+      Стоп
+    `;
+    startFakeNativeWave();
+  };
+
+  currentAudio.onended = currentAudio.onerror = () => {
+    stopAudio();
+  };
+
+  currentAudio.play().catch(() => stopAudio());
+}
+
+function stopAudio() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio = null;
+  }
+  isSpeaking = false;
+  cancelAnimationFrame(nativeAnimId);
+  document.getElementById('speakingIndicator').classList.remove('active');
+  document.getElementById('btnPlay').innerHTML = `
+    <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.5l10 5.5-10 5.5V2.5z"/></svg>
+    Слушать
+  `;
+}
+
+function setSpeed(rate, btn) {
+  playbackRate = rate;
+  document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (currentAudio) currentAudio.playbackRate = rate;
+}
+
+// ─── WAVEFORM ANIMATION while MP3 plays ───────────────────────────────────────
+function startFakeNativeWave() {
+  const canvas = document.getElementById('nativeWave');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = 72 * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  nativeWavePos = 0;
+  nativeWaveData = [];
+
+  function draw() {
+    if (!isSpeaking) return;
+    nativeAnimId = requestAnimationFrame(draw);
+    const w = canvas.offsetWidth, h = 72;
+    ctx.clearRect(0, 0, w, h);
+    const amp = 10 + Math.abs(Math.sin(nativeWavePos * 0.08)) * 22 + Math.random() * 8;
+    nativeWaveData.push(amp);
+    if (nativeWaveData.length > w) nativeWaveData.shift();
+    drawWaveform(ctx, nativeWaveData, w, h, '#c8a96e', 0.7);
+    nativeWavePos++;
+  }
+  draw();
+}
+
+// ─── RECORDING ────────────────────────────────────────────────────────────────
+async function toggleRecord() {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    await startRecording();
+  }
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const ctx = getAudioCtx();
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    userAnalyser = analyser;
+
+    recordingChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordingChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordingChunks, { type: 'audio/webm' });
+      userAudioBlob = blob;
+      if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
+      userAudioUrl = URL.createObjectURL(blob);
+      stream.getTracks().forEach(t => t.stop());
+      document.getElementById('btnPlayback').disabled = false;
+      document.getElementById('btnRetry').style.display = 'inline-flex';
+      analyseUserAudio(blob);
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    document.getElementById('btnRecord').classList.add('recording');
+    document.getElementById('recordLabel').textContent = 'Стоп';
+    startUserWaveCapture(analyser);
+  } catch (e) {
+    alert('Микрофон недоступен. Разрешите доступ в настройках браузера.');
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  isRecording = false;
+  cancelAnimationFrame(userAnimId);
+  document.getElementById('btnRecord').classList.remove('recording');
+  document.getElementById('recordLabel').textContent = 'Записать';
+}
+
+// ─── USER WAVE CAPTURE ────────────────────────────────────────────────────────
+let userWaveData = [];
+
+function startUserWaveCapture(analyser) {
+  const canvas = document.getElementById('userWave');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = 72 * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  userWaveData = [];
+  const dataArr = new Uint8Array(analyser.frequencyBinCount);
+
+  function draw() {
+    if (!isRecording) return;
+    userAnimId = requestAnimationFrame(draw);
+    analyser.getByteTimeDomainData(dataArr);
+    const amp = dataArr.reduce((s, v) => s + Math.abs(v - 128), 0) / dataArr.length;
+    userWaveData.push(amp * 2);
+    const w = canvas.offsetWidth, h = 72;
+    if (userWaveData.length > w) userWaveData.shift();
+    ctx.clearRect(0, 0, w, h);
+    drawWaveform(ctx, userWaveData, w, h, '#7eb8d4', 0.7);
+  }
+  draw();
+}
+
+async function analyseUserAudio(blob) {
+  try {
+    const ctx = getAudioCtx();
+    const ab = await blob.arrayBuffer();
+    const audio = await ctx.decodeAudioData(ab);
+    const data = audio.getChannelData(0);
+    const step = Math.floor(data.length / 200);
+    const canvas = document.getElementById('userWave');
+    const cctx = canvas.getContext('2d');
+    const w = canvas.offsetWidth, h = 72;
+    cctx.clearRect(0, 0, w, h);
+    userWaveData = [];
+    for (let i = 0; i < 200; i++) {
+      let sum = 0;
+      for (let j = 0; j < step; j++) sum += Math.abs(data[i * step + j] || 0);
+      userWaveData.push((sum / step) * 80);
+    }
+    drawWaveform(cctx, userWaveData, w, h, '#7eb8d4', 0.8);
+  } catch(e) {}
+}
+
+function retryPhrase() {
+  const c = document.getElementById('userWave');
+  c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  userWaveData = [];
+  userAudioUrl = null;
+  document.getElementById('btnPlayback').disabled = true;
+  document.getElementById('btnRetry').style.display = 'none';
+}
+
+
+function drawWaveform(ctx, data, w, h, color, alpha) {
+  if (!data.length) return;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  const mid = h / 2;
+  for (let i = 0; i < data.length; i++) {
+    const x = (i / data.length) * w;
+    const amp = Math.min(data[i], mid * 0.9);
+    ctx.moveTo(x, mid - amp);
+    ctx.lineTo(x, mid + amp);
+  }
+  ctx.stroke();
+
+  ctx.globalAlpha = alpha * 0.15;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, mid);
+  for (let i = 0; i < data.length; i++) {
+    const x = (i / data.length) * w;
+    const amp = Math.min(data[i], mid * 0.9);
+    ctx.lineTo(x, mid - amp);
+  }
+  for (let i = data.length - 1; i >= 0; i--) {
+    const x = (i / data.length) * w;
+    const amp = Math.min(data[i], mid * 0.9);
+    ctx.lineTo(x, mid + amp);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// ─── PLAYBACK ─────────────────────────────────────────────────────────────────
+function playUserAudio() {
+  if (!userAudioUrl) return;
+  const a = new Audio(userAudioUrl);
+  a.play();
+}
+
+// ─── INTONATION DIAGRAM ───────────────────────────────────────────────────────
+// Each word token: { w: "word", s: bool (stressed), p: bool (pause after),
+//   arc: "rise"|"fall"|"level"|"rise-fall"|"fall-rise"|"none" }
+// arc describes pitch movement OVER this word
+
+function renderIntonation(tokens, container) {
+  container.innerHTML = '';
+  if (!tokens || !tokens.length) return;
+
+  // Use rAF so the container has been laid out and has a real width
+  requestAnimationFrame(() => _doRenderIntonation(tokens, container));
+}
+
+function _doRenderIntonation(tokens, container) {
+  container.innerHTML = '';
+
+  const PAD_LEFT = 8, PAD_RIGHT = 8;
+  const ROW_H = 72;
+  const ARC_ZONE = 34;
+  const WORD_Y = 58;
+  const WORD_GAP = 10;
+  const PAUSE_W = 14;
+
+  // Measure word widths using a temp canvas
+  const mc = document.createElement('canvas');
+  const mctx = mc.getContext('2d');
+
+  const measured = tokens.map(t => {
+    mctx.font = t.s ? '600 13px DM Sans, sans-serif' : '400 13px DM Sans, sans-serif';
+    return { ...t, width: mctx.measureText(t.w).width };
+  });
+
+  // Available width — use container width or fallback to 560
+  const availW = (container.clientWidth || container.offsetWidth || 560) - PAD_LEFT - PAD_RIGHT;
+  const MAX_ROW_W = Math.max(availW, 300);
+  const rows = [];
+  let row = [];
+  let rowW = PAD_LEFT;
+  measured.forEach((tok, i) => {
+    const tokW = tok.width + WORD_GAP + (tok.p ? PAUSE_W : 0);
+    if (rowW + tokW > MAX_ROW_W && row.length > 0) {
+      rows.push(row);
+      row = [];
+      rowW = PAD_LEFT;
+    }
+    row.push(tok);
+    rowW += tokW;
+  });
+  if (row.length) rows.push(row);
+
+  const totalW = Math.max(...rows.map(r => {
+    return r.reduce((s, t) => s + t.width + WORD_GAP + (t.p ? PAUSE_W : 0), PAD_LEFT) + PAD_RIGHT;
+  }));
+  const totalH = rows.length * ROW_H + 4;
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+  svg.setAttribute('width', '100%');
+  svg.style.maxWidth = totalW + 'px';
+  svg.classList.add('intonation-svg');
+
+  rows.forEach((rowTokens, ri) => {
+    const baseY = ri * ROW_H;
+    // assign x positions
+    let x = PAD_LEFT;
+    rowTokens.forEach(tok => { tok._x = x; x += tok.width + WORD_GAP + (tok.p ? PAUSE_W : 0); });
+
+    rowTokens.forEach(tok => {
+      const cx = tok._x + tok.width / 2;
+      const arcTop = baseY + 6;
+      const arcMid = baseY + ARC_ZONE / 2 + 4;
+      const arcBot = baseY + ARC_ZONE - 2;
+      const wordY = baseY + WORD_Y;
+      const r = tok.width / 2 + 4;
+
+      // Draw arc
+      let pathD = '', cls = '';
+      switch (tok.arc) {
+        case 'rise':
+          // curve from bottom-left to top-right
+          pathD = `M ${tok._x - 2} ${arcBot} Q ${cx} ${arcTop - 4} ${tok._x + tok.width + 2} ${arcMid - 6}`;
+          cls = 'inton-arc arc-rise';
+          break;
+        case 'fall':
+          pathD = `M ${tok._x - 2} ${arcMid - 6} Q ${cx} ${arcTop - 2} ${tok._x + tok.width + 2} ${arcBot}`;
+          cls = 'inton-arc arc-fall';
+          break;
+        case 'rise-fall':
+          pathD = `M ${tok._x - 2} ${arcBot} Q ${cx} ${arcTop - 8} ${tok._x + tok.width + 2} ${arcBot}`;
+          cls = 'inton-arc arc-rise-fall';
+          break;
+        case 'fall-rise':
+          pathD = `M ${tok._x - 2} ${arcTop} Q ${cx} ${arcBot + 4} ${tok._x + tok.width + 2} ${arcMid - 4}`;
+          cls = 'inton-arc arc-rise';
+          break;
+        case 'level':
+          pathD = `M ${tok._x - 2} ${arcMid} L ${tok._x + tok.width + 2} ${arcMid}`;
+          cls = 'inton-arc arc-level';
+          break;
+        case 'level-high':
+          pathD = `M ${tok._x - 2} ${arcTop + 4} L ${tok._x + tok.width + 2} ${arcTop + 4}`;
+          cls = 'inton-arc arc-rise';
+          break;
+        case 'none': default:
+          break;
+      }
+
+      if (pathD) {
+        const path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', pathD);
+        path.setAttribute('class', cls);
+        svg.appendChild(path);
+
+        // Arrowhead at end of arc
+        const arrow = makeArrowhead(NS, pathD, tok.arc);
+        if (arrow) svg.appendChild(arrow);
+      }
+
+      // Word text
+      const text = document.createElementNS(NS, 'text');
+      text.setAttribute('x', cx);
+      text.setAttribute('y', wordY);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('class', 'inton-word' + (tok.s ? ' stressed' : ''));
+      text.textContent = tok.w;
+      svg.appendChild(text);
+
+      // Pause vertical line
+      if (tok.p) {
+        const px = tok._x + tok.width + WORD_GAP / 2 + 2;
+        const line = document.createElementNS(NS, 'line');
+        line.setAttribute('x1', px); line.setAttribute('x2', px);
+        line.setAttribute('y1', baseY + 10); line.setAttribute('y2', baseY + 62);
+        line.setAttribute('class', 'inton-pause');
+        svg.appendChild(line);
+      }
+    });
+  });
+
+  container.appendChild(svg);
+
+  // Legend
+  const legend = document.createElement('div');
+  legend.className = 'inton-legend';
+  legend.innerHTML = `
+    <span class="legend-item"><span class="legend-line" style="background:#7eb8d4"></span> подъём</span>
+    <span class="legend-item"><span class="legend-line" style="background:#c8a96e"></span> спад</span>
+    <span class="legend-item"><span class="legend-line" style="background:#9b8fd4"></span> подъём→спад</span>
+    <span class="legend-item"><span class="legend-line" style="background:rgba(155,143,212,0.5)"></span> ровно</span>
+    <span class="legend-item" style="gap:3px"><span style="font-size:11px;color:var(--text)">слово</span> = ударное</span>
+  `;
+  container.appendChild(legend);
+}
+
+function makeArrowhead(NS, pathD, arcType) {
+  // Extract end point of path for arrowhead
+  const endMatch = pathD.match(/[\d.]+\s+[\d.]+$/);
+  if (!endMatch) return null;
+  const parts = endMatch[0].trim().split(/\s+/);
+  const ex = parseFloat(parts[0]), ey = parseFloat(parts[1]);
+
+  let dx = 0, dy = 0;
+  switch (arcType) {
+    case 'rise':      dx = 3; dy = -3; break;
+    case 'fall':      dx = 3; dy = 3;  break;
+    case 'rise-fall': dx = 3; dy = 3;  break;
+    case 'fall-rise': dx = 3; dy = -2; break;
+    case 'level':     dx = 4; dy = 0;  break;
+    case 'level-high':dx = 4; dy = 0;  break;
+    default: return null;
+  }
+
+  const p = document.createElementNS(NS, 'path');
+  p.setAttribute('d', `M ${ex} ${ey} l ${-dx*1.5} ${-dy} M ${ex} ${ey} l ${-dy} ${dx*1.5}`);
+  p.setAttribute('class', 'inton-arrow ' +
+    (arcType === 'fall' || arcType === 'rise-fall' ? 'arc-fall' :
+     arcType === 'level' || arcType === 'level-high' ? 'arc-level' : 'arc-rise'));
+  return p;
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function navigate(dir) {
+  currentIndex = Math.max(0, Math.min(filteredPhrases.length - 1, currentIndex + dir));
+  loadPhrase(currentIndex);
+}
+
+function filterCategory(cat, btn) {
+  currentFilter = cat;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  filteredPhrases = cat === 'all' ? [...phrases] : phrases.filter(p => p.cat === cat);
+  currentIndex = 0;
+  loadPhrase(0);
+}
+
+function loadPhrase(idx) {
+  const p = filteredPhrases[idx];
+  document.getElementById('phraseNum').textContent = String(idx + 1).padStart(2, '0');
+  document.getElementById('phraseEn').textContent = p.en;
+  document.getElementById('phraseTranscription').textContent = p.transcription;
+  document.getElementById('phraseRu').textContent = p.ru;
+  document.getElementById('phraseExample').textContent = p.example;
+
+  // Render pronunciation tips
+  const tipsList = document.getElementById('pronTipsList');
+  tipsList.innerHTML = '';
+  (p.tips || []).forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'pron-tip-item';
+    div.innerHTML = `<span class="pron-tip-icon">${t.icon}</span><span>${t.text}</span>`;
+    tipsList.appendChild(div);
+  });
+
+  // Render intonation diagram
+  renderIntonation(p.intonation || [], document.getElementById('intonationWrap'));
+
+  stopAudio();
+  isSpeaking = false;
+  document.getElementById('speakingIndicator').classList.remove('active');
+  document.getElementById('btnPlay').innerHTML = `
+    <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.5l10 5.5-10 5.5V2.5z"/></svg>
+    Слушать
+  `;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  isRecording = false;
+  document.getElementById('btnRecord').classList.remove('recording');
+  document.getElementById('recordLabel').textContent = 'Записать';
+  document.getElementById('btnPlayback').disabled = true;
+  document.getElementById('btnRetry').style.display = 'none';
+
+  ['nativeWave','userWave'].forEach(id => {
+    const c = document.getElementById(id);
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  });
+  nativeWaveData = [];
+  userWaveData = [];
+  userAudioUrl = null;
+
+  document.getElementById('btnPrev').disabled = idx === 0;
+  document.getElementById('btnNext').disabled = idx === filteredPhrases.length - 1;
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = filteredPhrases.length;
+  const pct = total > 1 ? (currentIndex / (total - 1)) * 100 : 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent =
+    `Фраза ${currentIndex + 1} из ${total}`;
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  if (window.Telegram && window.Telegram.WebApp) {
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+    tg.disableVerticalSwipes();
+  }
+  loadPhrase(0);
+});
+</script>
+</body>
+</html>
